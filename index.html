@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eWeb3 Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>eWeb3 Blockchain Dashboard</h1>
+        <p>Monitor EDN transactions on Base Sepolia</p>
+    </header>
+
+    <nav>
+        <button id="overviewBtn" class="active">Overview</button>
+        <button id="transactionsBtn">Transactions</button>
+        <button id="analyticsBtn">Analytics</button>
+    </nav>
+
+    <main>
+        <!-- Overview Section -->
+        <section id="overview" class="dashboard-section active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Transactions</h3>
+                    <p id="totalTx">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Recent Activity</h3>
+                    <p id="recentActivity">Loading...</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Status</h3>
+                    <p id="healthStatus">Checking...</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Last Updated</h3>
+                    <p id="lastUpdated">Never</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transactions Section -->
+        <section id="transactions" class="dashboard-section">
+            <h2>Recent Transactions</h2>
+            <table id="txTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="txBody">
+                    <tr><td colspan="5">Loading...</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Analytics Section -->
+        <section id="analytics" class="dashboard-section">
+            <h2>Analytics Overview</h2>
+            <div class="analytics-grid">
+                <div class="chart-placeholder">
+                    <h3>Transaction Volume</h3>
+                    <canvas id="volumeChart"></canvas>
+                </div>
+                <div class="chart-placeholder">
+                    <h3>Status Breakdown</h3>
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 eWeb3. Powered by Base Sepolia.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
