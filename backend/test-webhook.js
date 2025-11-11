@@ -116,7 +116,7 @@ async function sendTestWebhook() {
 // Send first payload immediately
 sendTestWebhook();
 
-// Send every 3 minutes (180000 ms)
-setInterval(sendTestWebhook, 180000);
+// Send every 30 seconds (30000 ms)
+setInterval(sendTestWebhook, 30000);
 
-console.log('Test webhook started. Sending payloads every 3 minutes to http://localhost:3000/webhook/transaction');
+console.log('Test webhook started. Sending payloads every 30 seconds to http://localhost:3000/webhook/transaction');
