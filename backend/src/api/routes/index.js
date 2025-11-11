@@ -12,8 +12,8 @@ router.get('/health', asyncHandler(transactionController.healthCheck));
 // Webhook routes - no auth, but rate limited
 router.post('/webhook/transaction', webhookLimiter, asyncHandler(webhookController.processWebhook));
 
-// API routes - require authentication
-router.use('/api', authenticate, limiter);
+// API routes - rate limited but public for dashboard
+router.use('/api', limiter);
 
 // Transaction routes
 router.get('/api/transactions/recent', asyncHandler(transactionController.getRecentTransactions));
