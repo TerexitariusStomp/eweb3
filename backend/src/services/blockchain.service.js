@@ -137,22 +137,7 @@ class BlockchainService {
   async estimateGas(formattedData) {
     return estimateGasWithBuffer(
       'recordTransaction',
-      formattedData.id,
-      formattedData.transactionType,
-      formattedData.amount,
-      formattedData.empresaId,
-      formattedData.parceiroNegocioId,
-      formattedData.celularId,
-      formattedData.moedaId,
-      formattedData.plataformaId,
-      formattedData.transacaoTipoId,
-      formattedData.status,
-      formattedData.createdAt,
-      formattedData.tableName,
-      formattedData.operation,
-      formattedData.dataControle,
-      formattedData.uuid,
-      formattedData.versao
+      formattedData
     );
   }
   
@@ -164,27 +149,9 @@ class BlockchainService {
    */
   async executeRecordTransaction(formattedData, gasLimit) {
     // Send transaction
-    const tx = await this.contract.recordTransaction(
-      formattedData.id,
-      formattedData.transactionType,
-      formattedData.amount,
-      formattedData.empresaId,
-      formattedData.parceiroNegocioId,
-      formattedData.celularId,
-      formattedData.moedaId,
-      formattedData.plataformaId,
-      formattedData.transacaoTipoId,
-      formattedData.status,
-      formattedData.createdAt,
-      formattedData.tableName,
-      formattedData.operation,
-      formattedData.dataControle,
-      formattedData.uuid,
-      formattedData.versao,
-      {
-        gasLimit: gasLimit
-      }
-    );
+    const tx = await this.contract.recordTransaction(formattedData, {
+      gasLimit: gasLimit
+    });
     
     logBlockchainTransaction(tx.hash, formattedData);
     

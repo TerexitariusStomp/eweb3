@@ -22,6 +22,7 @@ export function formatTransactionForBlockchain(webhookTransaction) {
     empresaId: BigInt(transaction.empresa_id || 0),
     parceiroNegocioId: BigInt(transaction.parceiro_negocio_id || 0),
     celularId: BigInt(transaction.celular_id || 0),
+    celularDebitoId: BigInt(transaction.celular_debito_id || 0),
     moedaId: BigInt(transaction.moeda_id || 0),
     plataformaId: BigInt(transaction.plataforma_id || 0),
     transacaoTipoId: BigInt(transaction.transacao_tipo_id || 0),

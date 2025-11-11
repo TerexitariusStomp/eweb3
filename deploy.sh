@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 APP_DIR="/var/www/edn-blockchain-recorder"
 BACKEND_DIR="$APP_DIR/backend"
 NGINX_CONF="/etc/nginx/sites-available/edn-blockchain-recorder"
-DOMAIN="yourdomain.com"
+DOMAIN="terexitariusstomps.github.io"
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
