@@ -1,6 +1,15 @@
-// Configuration
-const API_BASE = 'http://localhost:3000'; // Change to production backend URL when deployed
-const API_TIMEOUT = 10000;
+// Configuration - Direct blockchain connection
+const CONTRACT_ADDRESS = '0x93c67B21E43eB1c8D4cA8341F195f8C98871bEFc';
+const RPC_URL = 'https://sepolia.base.org';
+const ABI = [
+  "function transactionCount() view returns (uint256)",
+  "function getTransaction(uint256 id) view returns (tuple(uint256 id, string uuid, uint256 empresaId, string transactionType, int256 amount, uint256 timestamp, string status))",
+  "function getTransactionsByEmpresa(uint256 empresaId, uint256 limit) view returns (tuple(uint256 id, string uuid, uint256 empresaId, string transactionType, int256 amount, uint256 timestamp, string status)[])",
+  "function getTransactionByUUID(string uuid) view returns (tuple(uint256 id, string uuid, uint256 empresaId, string transactionType, int256 amount, uint256 timestamp, string status))",
+  "event TransactionRecorded(uint256 indexed transactionId, uint256 indexed empresaId, string indexed transactionType, int256 amount, uint256 timestamp, string uuid)"
+];
+const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
 // DOM Elements
 const overviewBtn = document.getElementById('overviewBtn');
@@ -38,157 +47,241 @@ function showSection(sectionId) {
     if (sectionId === 'analytics') loadAnalytics();
 }
 
-// API Helper
-async function apiCall(endpoint, options = {}) {
-    try {
-        const response = await fetch(`${API_BASE}${endpoint}`, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('API Error:', error);
-        throw error;
-    }
+// Blockchain Helper
+async function blockchainCall(method, params = []) {
+  try {
+    const result = await contract[method](...params);
+    return result;
+  } catch (error) {
+    console.error('Blockchain Error:', error);
+    throw error;
+  }
 }
 
 // Load All Data
 async function loadData() {
-    try {
-        await Promise.all([
-            loadOverview(),
-            loadTransactions(),
-            loadAnalytics()
-        ]);
-        document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
-    } catch (error) {
-        showMessage('Error loading data: ' + error.message, 'error');
-    }
+  try {
+    await Promise.all([
+      loadOverview(),
+      loadTransactions(),
+      loadAnalytics()
+    ]);
+    document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+  } catch (error) {
+    showMessage('Error loading blockchain data: ' + error.message, 'error');
+  }
 }
 
 // Overview
 async function loadOverview() {
   try {
-    const health = await apiCall('/health');
-    document.getElementById('healthStatus').textContent = health.status === 'ok' ? 'Healthy' : 'Issues';
+    // Check blockchain connection
+    const latestBlock = await provider.getBlockNumber();
+    document.getElementById('healthStatus').textContent = 'Connected (Block: ' + latestBlock + ')';
 
-    const analytics = await apiCall('/api/analytics/overview');
-    document.getElementById('totalTx').textContent = analytics.totalTransactions || 0;
-    document.getElementById('recentActivity').textContent = `${analytics.recentTransactions || 0} in last hour`;
+    // Get total transaction count
+    const totalTx = await blockchainCall('transactionCount');
+    document.getElementById('totalTx').textContent = ethers.utils.formatUnits(totalTx, 0);
+
+    // Recent activity - get recent events
+    const filter = contract.filters.TransactionRecorded();
+    const recentEvents = await contract.queryFilter(filter, latestBlock - 100, latestBlock);
+    document.getElementById('recentActivity').textContent = recentEvents.length + ' recent events';
   } catch (error) {
-    // Mock data for demo
-    document.getElementById('healthStatus').textContent = 'Demo Mode';
-    document.getElementById('totalTx').textContent = '42';
-    document.getElementById('recentActivity').textContent = '5 in last hour';
-    console.warn('Using mock data for overview - connect to backend for live data');
+    document.getElementById('healthStatus').textContent = 'Error';
+    document.getElementById('totalTx').textContent = 'N/A';
+    document.getElementById('recentActivity').textContent = 'Error loading';
+    console.error('Blockchain overview error:', error);
   }
 }
 
 // Transactions
 async function loadTransactions() {
   try {
-    const data = await apiCall('/api/transactions/recent');
+    // Query recent TransactionRecorded events
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlock - 100); // Last 100 blocks
+    const filter = contract.filters.TransactionRecorded();
+    const events = await contract.queryFilter(filter, fromBlock, currentBlock);
+    
+    // Get unique UUIDs (most recent first)
+    const uniqueUUIDs = [...new Set(
+      events
+        .reverse()
+        .slice(0, 10)
+        .map(event => event.args.uuid)
+    )];
+    
+    // Fetch full transaction details for each UUID
+    const transactions = await Promise.all(
+      uniqueUUIDs.map(async (uuid) => {
+        try {
+          const tx = await blockchainCall('getTransactionByUUID', [uuid]);
+          return tx;
+        } catch (error) {
+          console.warn('Failed to fetch transaction details:', uuid, error.message);
+          return null;
+        }
+      })
+    );
+    
+    const validTxs = transactions.filter(tx => tx !== null);
     const tbody = document.getElementById('txBody');
     tbody.innerHTML = '';
 
-    if (data.length === 0) {
+    if (validTxs.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5">No transactions found</td></tr>';
       return;
     }
 
-    data.forEach(tx => {
+    validTxs.forEach(tx => {
       const row = tbody.insertRow();
+      const amount = ethers.utils.formatUnits(tx.amount, 0);
+      const timestamp = new Date(Number(tx.timestamp) * 1000).toLocaleString();
       row.innerHTML = `
-        <td>${tx.id || 'N/A'}</td>
-        <td>${tx.type || 'N/A'}</td>
-        <td>${tx.amount ? parseFloat(tx.amount).toFixed(2) : 'N/A'}</td>
-        <td><span class="status-${tx.status}">${tx.status || 'N/A'}</span></td>
-        <td>${new Date(tx.created_at).toLocaleString()}</td>
+        <td>${ethers.utils.formatUnits(tx.id, 0)}</td>
+        <td>${tx.transactionType}</td>
+        <td>${parseFloat(amount).toFixed(2)}</td>
+        <td><span class="status-${tx.status}">${tx.status}</span></td>
+        <td>${timestamp}</td>
       `;
     });
   } catch (error) {
-    // Mock data for demo
     const tbody = document.getElementById('txBody');
-    tbody.innerHTML = `
-      <tr>
-        <td>123456</td>
-        <td>credit</td>
-        <td>10.50</td>
-        <td><span class="status-confirmed">confirmed</span></td>
-        <td>${new Date().toLocaleString()}</td>
-      </tr>
-      <tr>
-        <td>123457</td>
-        <td>debit</td>
-        <td>-5.25</td>
-        <td><span class="status-confirmed">confirmed</span></td>
-        <td>${new Date(Date.now() - 3600000).toLocaleString()}</td>
-      </tr>
-    `;
-    console.warn('Using mock data for transactions - connect to backend for live data');
+    tbody.innerHTML = '<tr><td colspan="5">Error loading transactions from blockchain</td></tr>';
+    console.error('Blockchain transactions error:', error);
   }
 }
 
 // Analytics
 async function loadAnalytics() {
   try {
-    const data = await apiCall('/api/analytics/overview');
+    // Get total count
+    const totalTx = await blockchainCall('transactionCount');
+    
+    // Query all TransactionRecorded events for historical data
+    const filter = contract.filters.TransactionRecorded();
+    const events = await contract.queryFilter(filter, 0); // From block 0 to get all events
+    
+    // Group events by day for volume chart
+    const dailyVolumes = {};
+    events.forEach(event => {
+      const timestamp = Number(event.args.timestamp);
+      const date = new Date(timestamp * 1000);
+      const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      dailyVolumes[dateKey] = (dailyVolumes[dateKey] || 0) + 1;
+    });
+    
+    // Get last 7 days
+    const today = new Date();
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dateKey = date.toISOString().split('T')[0];
+      last7Days.push(dateKey);
+    }
+    
+    const volumeData = last7Days.map(dateKey => dailyVolumes[dateKey] || 0);
+    const labels = last7Days.map(dateKey => {
+      const date = new Date(dateKey);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+    
+    // Status breakdown from all available transactions (or recent if too many)
+    const recentTxs = await blockchainCall('getRecentTransactions', [100]);
+    const statusCounts = { confirmed: 0, pending: 0, failed: 0, other: 0 };
+    recentTxs.forEach(tx => {
+      if (statusCounts[tx.status]) {
+        statusCounts[tx.status]++;
+      } else {
+        statusCounts.other++;
+      }
+    });
 
-    // Volume Chart (placeholder data if no real data)
+    // Volume Chart
     const volumeCtx = document.getElementById('volumeChart').getContext('2d');
     if (volumeChart) volumeChart.destroy();
     volumeChart = new Chart(volumeCtx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        labels: labels,
         datasets: [{
-          label: 'Transactions',
-          data: data.volumeData || [12, 19, 3, 5, 2, 3],
+          label: 'Daily Transactions',
+          data: volumeData,
           borderColor: '#667eea',
-          tension: 0.1
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          tension: 0.1,
+          fill: true
         }]
       },
-      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: {
+          title: {
+            display: events.length === 0,
+            text: 'No transaction data yet - send some webhooks!'
+          }
+        }
+      }
     });
 
     // Status Chart
     const statusCtx = document.getElementById('statusChart').getContext('2d');
     if (statusChart) statusChart.destroy();
+    const statusLabels = Object.keys(statusCounts).filter(key => key !== 'other').concat(statusCounts.other > 0 ? ['Other'] : []);
+    const statusData = statusLabels.map(key => statusCounts[key]);
     statusChart = new Chart(statusCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Confirmed', 'Pending', 'Failed'],
+        labels: statusLabels,
         datasets: [{
-          data: data.statusBreakdown || [70, 20, 10],
-          backgroundColor: ['#27ae60', '#f39c12', '#e74c3c']
+          data: statusData,
+          backgroundColor: ['#27ae60', '#f39c12', '#e74c3c', '#95a5a6']
         }]
       },
-      options: { responsive: true }
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
     });
+
+    // Update total
+    document.getElementById('totalTx').textContent = totalTx.toString();
+
   } catch (error) {
-    // Mock charts for demo
+    showMessage('Error loading analytics from blockchain: ' + error.message, 'error');
+    console.error('Blockchain analytics error:', error);
+    
+    // Fallback charts with error message
     const volumeCtx = document.getElementById('volumeChart').getContext('2d');
     if (volumeChart) volumeChart.destroy();
     volumeChart = new Chart(volumeCtx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+        labels: ['Error'],
         datasets: [{
-          label: 'Transactions (Demo)',
-          data: [12, 19, 3, 5, 2, 3],
-          borderColor: '#667eea',
+          label: 'Transactions',
+          data: [0],
+          borderColor: '#e74c3c',
           tension: 0.1
         }]
       },
-      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+        plugins: {
+          title: {
+            display: true,
+            text: 'Analytics unavailable'
+          }
+        }
+      }
     });
 
     const statusCtx = document.getElementById('statusChart').getContext('2d');
@@ -196,16 +289,14 @@ async function loadAnalytics() {
     statusChart = new Chart(statusCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Confirmed', 'Pending', 'Failed'],
+        labels: ['Error'],
         datasets: [{
-          data: [70, 20, 10],
-          backgroundColor: ['#27ae60', '#f39c12', '#e74c3c']
+          data: [100],
+          backgroundColor: ['#e74c3c']
         }]
       },
       options: { responsive: true }
     });
-
-    console.warn('Using mock data for analytics - connect to backend for live data');
   }
 }
 
