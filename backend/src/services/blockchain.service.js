@@ -135,10 +135,15 @@ class BlockchainService {
    * @returns {Promise<bigint>}
    */
   async estimateGas(formattedData) {
-    return estimateGasWithBuffer(
-      'recordTransaction',
-      formattedData
-    );
+    try {
+      // Since single struct parameter, no spread
+      const gasEstimate = await this.contract.recordTransaction.estimateGas(formattedData);
+      const buffer = (gasEstimate * BigInt(blockchainConfig.gasBufferPercent)) / 100n;
+      return gasEstimate + buffer;
+    } catch (error) {
+      logger.warn(`Gas estimation failed for recordTransaction: ${error.message}. Using fallback gas limit.`);
+      return 500000n; // Conservative fallback
+    }
   }
   
   /**
@@ -148,16 +153,16 @@ class BlockchainService {
    * @returns {Promise<Object>} - Transaction receipt
    */
   async executeRecordTransaction(formattedData, gasLimit) {
-    // Send transaction
+    // Send transaction with struct as single parameter
     const tx = await this.contract.recordTransaction(formattedData, {
       gasLimit: gasLimit
     });
-    
+
     logBlockchainTransaction(tx.hash, formattedData);
-    
+
     // Wait for confirmation
     const receipt = await tx.wait(blockchainConfig.confirmationBlocks);
-    
+
     return receipt;
   }
   
@@ -270,19 +275,22 @@ class BlockchainService {
     try {
       logger.debug('Fetching transactions by empresa', { empresaId, limit });
       
-      // Fetch from blockchain (contract returns max 100)
+      // Fetch from blockchain - contract returns all transactions for empresa
       const txs = await retryBlockchainOperation(
         async () => await this.contract.getTransactionsByEmpresa(
-          BigInt(empresaId),
-          Math.min(limit, 100)
+          BigInt(empresaId)
         ),
         'Get transactions by empresa'
       );
       
       // Filter out empty transactions and format
-      const formatted = txs
-        .filter(tx => tx.id > 0)
+      let formatted = txs
+        .filter(tx => tx.id > 0n)
         .map(tx => formatTransactionFromBlockchain(tx));
+      
+      // Apply pagination in code since contract doesn't support it
+      const startIndex = (page - 1) * limit;
+      formatted = formatted.slice(startIndex, startIndex + limit);
       
       // Cache result
       transactionCache.setTransactionsByEmpresa(empresaId, page, formatted);
@@ -438,20 +446,26 @@ class BlockchainService {
     
     const eventHandler = async (event) => {
       try {
-        const { transactionId, empresaId, transactionType, amount, timestamp, uuid } = event.args;
+        // event.args is array in some cases, access by index
+        const transactionId = event.args[0];
+        const empresaId = event.args[1];
+        const transactionType = event.args[2];
+        const amount = event.args[3];
+        const timestamp = event.args[4];
+        const uuid = event.args[5];
+        
         logger.info('New transaction event received', {
-          uuid,
+          uuid: uuid.toString(),
           transactionId: transactionId.toString(),
           empresaId: empresaId.toString()
         });
         
         // Fetch full transaction details
-        const tx = await this.getTransactionByUUID(uuid);
+        const tx = await this.getTransactionByUUID(uuid.toString());
         callback(tx, event);
       } catch (error) {
         logger.error('Error in transaction subscription', {
-          error: error.message,
-          uuid
+          error: error.message
         });
       }
     };

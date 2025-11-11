@@ -20,10 +20,18 @@ export const blockchainConfig = {
 
 /**
  * Estimate gas for a contract method with buffer
+ * Note: For struct methods like recordTransaction, args should be the object (no spread)
+ * For simple methods, args should be array of parameters
  */
 export async function estimateGasWithBuffer(method, args) {
   try {
-    const gasEstimate = await contract[method].estimateGas(...args);
+    let gasEstimate;
+    if (Array.isArray(args)) {
+      gasEstimate = await contract[method].estimateGas(...args);
+    } else {
+      // Single parameter (struct/object)
+      gasEstimate = await contract[method].estimateGas(args);
+    }
     const buffer = (gasEstimate * BigInt(blockchainConfig.gasBufferPercent)) / 100n;
     return gasEstimate + buffer;
   } catch (error) {

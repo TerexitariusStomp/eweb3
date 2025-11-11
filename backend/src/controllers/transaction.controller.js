@@ -107,40 +107,20 @@ export const getRecentTransactions = async (req, res) => {
     });
 
   } catch (error) {
-    logger.error('Failed to get recent transactions', { 
+    logger.error('Failed to get recent transactions', {
       error: error.message,
-      wallet: req.walletAddress 
+      wallet: req.walletAddress
     });
-
-    // Return mock data for demo when blockchain is unavailable
-    const mockTransactions = [
-      {
-        id: 1,
-        type: 'credit',
-        amount: 100.00,
-        status: 'confirmed',
-        timestamp: new Date().toISOString(),
-        uuid: 'mock-uuid-1'
-      },
-      {
-        id: 2,
-        type: 'debit',
-        amount: -50.00,
-        status: 'confirmed',
-        timestamp: new Date().toISOString(),
-        uuid: 'mock-uuid-2'
-      }
-    ];
 
     res.status(StatusCodes.OK).json({
       success: true,
-      data: mockTransactions,
+      data: [],
       pagination: {
         page: 1,
         limit: 10,
-        total: mockTransactions.length
+        total: 0
       },
-      message: 'Using mock data (blockchain temporarily unavailable)'
+      message: 'Blockchain temporarily unavailable - no data loaded'
     });
   }
 };
@@ -234,33 +214,21 @@ export const getTransactionsByEmpresa = async (req, res) => {
     });
 
   } catch (error) {
-    logger.error('Failed to get transactions by empresa', { 
+    logger.error('Failed to get transactions by empresa', {
       empresaId: req.params.empresaId,
       error: error.message,
-      wallet: req.walletAddress 
+      wallet: req.walletAddress
     });
-
-    // Return mock data for demo
-    const mockTransactions = [
-      {
-        id: 1,
-        type: 'credit',
-        amount: 200.00,
-        status: 'confirmed',
-        timestamp: new Date().toISOString(),
-        uuid: 'mock-empresa-1'
-      }
-    ];
 
     res.status(StatusCodes.OK).json({
       success: true,
-      data: mockTransactions,
+      data: [],
       pagination: {
         page: 1,
         limit: 20,
-        total: mockTransactions.length
+        total: 0
       },
-      message: 'Using mock data (blockchain temporarily unavailable)'
+      message: 'Blockchain temporarily unavailable - no data loaded'
     });
   }
 };
@@ -326,34 +294,22 @@ export const filterTransactions = async (req, res) => {
     });
 
   } catch (error) {
-    logger.error('Failed to filter transactions', { 
+    logger.error('Failed to filter transactions', {
       error: error.message,
-      wallet: req.walletAddress 
+      wallet: req.walletAddress
     });
-
-    // Return mock data for demo
-    const mockFiltered = [
-      {
-        id: 1,
-        type: 'credit',
-        amount: 150.00,
-        status: 'confirmed',
-        timestamp: new Date().toISOString(),
-        uuid: 'mock-filter-1'
-      }
-    ];
 
     res.status(StatusCodes.OK).json({
       success: true,
-      data: mockFiltered,
+      data: [],
       filters: req.query,
       pagination: {
         page: 1,
         limit: 20,
-        total: mockFiltered.length,
-        totalFiltered: mockFiltered.length
+        total: 0,
+        totalFiltered: 0
       },
-      message: 'Using mock data (blockchain temporarily unavailable)'
+      message: 'Blockchain temporarily unavailable - no data loaded'
     });
   }
 };
