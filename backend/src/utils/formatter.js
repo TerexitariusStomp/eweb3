@@ -18,7 +18,7 @@ export function formatTransactionForBlockchain(webhookTransaction) {
   return {
     id: BigInt(transaction.id || 0),
     transactionType: transaction.type || TRANSACTION_TYPES.CREDIT,
-    amount: ethers.parseEther((transaction.amount || 0).toString()), // Convert to wei-like (assuming 18 decimals)
+    amount: ethers.parseEther(Math.abs(transaction.amount || 0).toString()), // Always positive for uint256
     empresaId: BigInt(transaction.empresa_id || 0),
     parceiroNegocioId: BigInt(transaction.parceiro_negocio_id || 0),
     celularId: BigInt(transaction.celular_id || 0),
@@ -57,7 +57,7 @@ function formatSingleTransactionFromBlockchain(item) {
   
   return {
     id: item.id.toString(),
-    blockchainId: item.id.toString(),
+    blockchainId: item.blockchainId?.toString() || item.id.toString(),
     transactionType: item.transactionType,
     amount: parseFloat(ethers.formatEther(item.amount)), // Convert from wei-like to decimal
     amountRaw: item.amount.toString(),

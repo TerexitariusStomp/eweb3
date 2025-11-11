@@ -218,13 +218,7 @@ class CacheService {
       }
     }, 300000); // 5 minutes
 
-    // Clean up expired keys periodically
-    setInterval(() => {
-      const cleaned = this.transactionCache.cleanup();
-      if (cleaned > 0) {
-        logger.debug('Cache cleanup completed', { cleaned });
-      }
-    }, API.CACHE_CHECK_PERIOD * 1000);
+    // NodeCache handles automatic cleanup via checkperiod, no manual cleanup needed
   }
 
   /**
