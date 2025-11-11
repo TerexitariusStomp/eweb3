@@ -1,7 +1,7 @@
 import { StatusCodes, ReasonPhrases } from 'http-status-codes';
-import blockchainService from '../../services/blockchain.service.js';
-import logger from '../../utils/logger.js';
-import { ERROR_MESSAGES } from '../../utils/constants.js';
+import blockchainService from '../services/blockchain.service.js';
+import logger from '../utils/logger.js';
+import { ERROR_MESSAGES } from '../utils/constants.js';
 
 /**
  * Process webhook transaction
@@ -29,8 +29,10 @@ export const processWebhook = async (req, res) => {
       });
     }
 
-    if (event_type !== 'transaction.created') {
-      logger.warn('Unsupported event type', { event_type });
+    // Normalize event type
+    const normalizedEventType = event_type.replace('_', '.');
+    if (normalizedEventType !== 'transaction.created') {
+      logger.warn('Unsupported event type', { event_type, normalized: normalizedEventType });
       return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
         message: 'Unsupported event type',
@@ -38,11 +40,16 @@ export const processWebhook = async (req, res) => {
       });
     }
 
+    // Normalize status
+    if (transaction.status === 'completed') {
+      transaction.status = 'confirmed';
+    }
+
     // Basic validation
     if (!transaction.id || !transaction.uuid) {
-      logger.warn('Missing required transaction fields', { 
+      logger.warn('Missing required transaction fields', {
         hasId: !!transaction.id,
-        hasUuid: !!transaction.uuid 
+        hasUuid: !!transaction.uuid
       });
       return res.status(StatusCodes.UNPROCESSABLE_ENTITY).json({
         success: false,

@@ -436,8 +436,9 @@ class BlockchainService {
   subscribeToNewTransactions(callback) {
     const filter = this.contract.filters.TransactionRecorded();
     
-    const eventHandler = async (transactionId, empresaId, transactionType, amount, timestamp, uuid, event) => {
+    const eventHandler = async (event) => {
       try {
+        const { transactionId, empresaId, transactionType, amount, timestamp, uuid } = event.args;
         logger.info('New transaction event received', {
           uuid,
           transactionId: transactionId.toString(),

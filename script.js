@@ -22,13 +22,22 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(loadData, 30000); // Refresh every 30 seconds
 });
 
-// Blockchain Helper
-async function blockchainCall(method, params = []) {
+// API Helper
+async function apiCall(endpoint, options = {}) {
   try {
-    const result = await contract[method](...params);
-    return result;
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+    return await response.json();
   } catch (error) {
-    console.error('Blockchain Error:', error);
+    console.error('API Error:', error);
     throw error;
   }
 }
@@ -43,88 +52,59 @@ async function loadData() {
     ]);
     document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
   } catch (error) {
-    showMessage('Error loading blockchain data: ' + error.message, 'error');
+    showMessage('Error loading data: ' + error.message, 'error');
   }
 }
 
 // Overview
 async function loadOverview() {
   try {
-    // Check blockchain connection
-    const latestBlock = await provider.getBlockNumber();
-    document.getElementById('healthStatus').textContent = 'Connected (Block: ' + latestBlock + ')';
+    // Health check
+    const health = await apiCall('/health');
+    document.getElementById('healthStatus').textContent = health.data.blockchain.status === 'ok'
+      ? `Connected (Block: ${health.data.blockchain.latestBlock})`
+      : 'Disconnected';
 
-    // Get total transaction count
-    const totalTx = await blockchainCall('transactionCount');
-    document.getElementById('totalTx').textContent = ethers.utils.formatUnits(totalTx, 0);
-
-    // Recent activity - get recent events
-    const filter = contract.filters.TransactionRecorded();
-    const recentEvents = await contract.queryFilter(filter, latestBlock - 100, latestBlock);
-    document.getElementById('recentActivity').textContent = recentEvents.length + ' recent events';
+    // Get overview stats
+    const stats = await apiCall('/api/analytics/overview');
+    document.getElementById('totalTx').textContent = stats.data.totalTransactions;
+    document.getElementById('recentActivity').textContent = stats.data.recentTransactions + ' recent events';
   } catch (error) {
     document.getElementById('healthStatus').textContent = 'Error';
     document.getElementById('totalTx').textContent = 'N/A';
     document.getElementById('recentActivity').textContent = 'Error loading';
-    console.error('Blockchain overview error:', error);
+    console.error('Overview error:', error);
   }
 }
 
 // Transactions
 async function loadTransactions() {
   try {
-    // Query recent TransactionRecorded events
-    const currentBlock = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, currentBlock - 100); // Last 100 blocks
-    const filter = contract.filters.TransactionRecorded();
-    const events = await contract.queryFilter(filter, fromBlock, currentBlock);
-    
-    // Get unique UUIDs (most recent first)
-    const uniqueUUIDs = [...new Set(
-      events
-        .reverse()
-        .slice(0, 10)
-        .map(event => event.args.uuid)
-    )];
-    
-    // Fetch full transaction details for each UUID
-    const transactions = await Promise.all(
-      uniqueUUIDs.map(async (uuid) => {
-        try {
-          const tx = await blockchainCall('getTransactionByUUID', [uuid]);
-          return tx;
-        } catch (error) {
-          console.warn('Failed to fetch transaction details:', uuid, error.message);
-          return null;
-        }
-      })
-    );
-    
-    const validTxs = transactions.filter(tx => tx !== null);
+    const response = await apiCall('/api/transactions/recent?limit=10');
+    const transactions = response.data;
     const tbody = document.getElementById('txBody');
     tbody.innerHTML = '';
 
-    if (validTxs.length === 0) {
+    if (transactions.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5">No transactions found</td></tr>';
       return;
     }
 
-    validTxs.forEach(tx => {
+    transactions.forEach(tx => {
       const row = tbody.insertRow();
-      const amount = ethers.utils.formatUnits(tx.amount, 0);
-      const timestamp = new Date(Number(tx.timestamp) * 1000).toLocaleString();
+      const timestamp = new Date(tx.created_at || tx.timestamp).toLocaleString();
       row.innerHTML = `
-        <td>${ethers.utils.formatUnits(tx.id, 0)}</td>
-        <td>${tx.transactionType}</td>
-        <td>${parseFloat(amount).toFixed(2)}</td>
+        <td>${tx.id}</td>
+        <td>${tx.type || tx.transactionType}</td>
+        <td>${parseFloat(tx.amount).toFixed(2)}</td>
         <td><span class="status-${tx.status}">${tx.status}</span></td>
         <td>${timestamp}</td>
       `;
     });
   } catch (error) {
     const tbody = document.getElementById('txBody');
-    tbody.innerHTML = '<tr><td colspan="5">Error loading transactions from blockchain</td></tr>';
-    console.error('Blockchain transactions error:', error);
+    tbody.innerHTML = '<tr><td colspan="5">Error loading transactions</td></tr>';
+    console.error('Transactions error:', error);
   }
 }
 

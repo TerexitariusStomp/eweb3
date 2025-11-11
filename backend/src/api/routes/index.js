@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import * as webhookController from '../controllers/webhook.controller.js';
-import * as transactionController from '../controllers/transaction.controller.js';
+import * as webhookController from '../../controllers/webhook.controller.js';
+import * as transactionController from '../../controllers/transaction.controller.js';
 import { authenticate, limiter, webhookLimiter } from '../../middleware/auth.middleware.js';
 import { asyncHandler } from '../../middleware/errorHandler.middleware.js';
 

@@ -16,7 +16,7 @@ class ValidationService {
       transaction: Joi.object({
         id: Joi.number().integer().positive().required(),
         type: Joi.string().valid('credit', 'debit', 'transfer', 'refund', 'adjustment').required(),
-        amount: Joi.number().precision(2).positive().required(),
+        amount: Joi.number().precision(2).min(-999999.99).max(999999.99).required(),
         empresa_id: Joi.number().integer().positive().required(),
         parceiro_negocio_id: Joi.number().integer().positive().required(),
         celular_id: Joi.number().integer().positive().required(),
@@ -145,11 +145,6 @@ class ValidationService {
    * @throws {Error} - Business rule violation
    */
   validateBusinessRules(transaction) {
-    // Amount must be positive
-    if (transaction.amount <= 0) {
-      throw new Error('Transaction amount must be positive');
-    }
-
     // UUID must be valid
     if (!this.isValidUUID(transaction.uuid)) {
       throw new Error('Invalid transaction UUID format');
@@ -164,6 +159,14 @@ class ValidationService {
     const createdAt = new Date(transaction.created_at);
     if (createdAt > new Date()) {
       throw new Error('Transaction created_at cannot be in the future');
+    }
+
+    // Amount validation based on type
+    if (transaction.type === 'debit' && transaction.amount >= 0) {
+      throw new Error('Debit transactions must have negative amounts');
+    }
+    if (transaction.type === 'credit' && transaction.amount <= 0) {
+      throw new Error('Credit transactions must have positive amounts');
     }
 
     logger.debug('Business rules validation passed', { uuid: transaction.uuid });

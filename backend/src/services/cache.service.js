@@ -220,7 +220,7 @@ class CacheService {
 
     // Clean up expired keys periodically
     setInterval(() => {
-      const cleaned = this.transactionCache.cleanUp();
+      const cleaned = this.transactionCache.cleanup();
       if (cleaned > 0) {
         logger.debug('Cache cleanup completed', { cleaned });
       }

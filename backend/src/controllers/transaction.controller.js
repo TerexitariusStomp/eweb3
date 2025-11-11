@@ -1,8 +1,8 @@
 import { StatusCodes, ReasonPhrases } from 'http-status-codes';
-import blockchainService from '../../services/blockchain.service.js';
-import logger from '../../utils/logger.js';
-import { transactionCache } from '../../services/cache.service.js';
-import { ERROR_MESSAGES } from '../../utils/constants.js';
+import blockchainService from '../services/blockchain.service.js';
+import logger from '../utils/logger.js';
+import { transactionCache } from '../services/cache.service.js';
+import { ERROR_MESSAGES } from '../utils/constants.js';
 
 /**
  * Health check endpoint
