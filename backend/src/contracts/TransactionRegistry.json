@@ -1,0 +1,159 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {"name": "_id", "type": "uint256"},
+        {"name": "_transactionType", "type": "string"},
+        {"name": "_amount", "type": "uint256"},
+        {"name": "_empresaId", "type": "uint256"},
+        {"name": "_parceiroNegocioId", "type": "uint256"},
+        {"name": "_celularId", "type": "uint256"},
+        {"name": "_moedaId", "type": "uint256"},
+        {"name": "_plataformaId", "type": "uint256"},
+        {"name": "_transacaoTipoId", "type": "uint256"},
+        {"name": "_status", "type": "string"},
+        {"name": "_createdAt", "type": "uint256"},
+        {"name": "_tableName", "type": "string"},
+        {"name": "_operation", "type": "string"},
+        {"name": "_dataControle", "type": "string"},
+        {"name": "_uuid", "type": "string"},
+        {"name": "_versao", "type": "string"}
+      ],
+      "name": "recordTransaction",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [{"name": "uuid", "type": "string"}],
+      "name": "getTransactionByUUID",
+      "outputs": [
+        {
+          "components": [
+            {"name": "id", "type": "uint256"},
+            {"name": "transactionType", "type": "string"},
+            {"name": "amount", "type": "uint256"},
+            {"name": "empresaId", "type": "uint256"},
+            {"name": "parceiroNegocioId", "type": "uint256"},
+            {"name": "celularId", "type": "uint256"},
+            {"name": "moedaId", "type": "uint256"},
+            {"name": "plataformaId", "type": "uint256"},
+            {"name": "transacaoTipoId", "type": "uint256"},
+            {"name": "status", "type": "string"},
+            {"name": "createdAt", "type": "uint256"},
+            {"name": "tableName", "type": "string"},
+            {"name": "operation", "type": "string"},
+            {"name": "dataControle", "type": "string"},
+            {"name": "uuid", "type": "string"},
+            {"name": "versao", "type": "string"}
+          ],
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [{"name": "_id", "type": "uint256"}],
+      "name": "getTransaction",
+      "outputs": [
+        {
+          "components": [
+            {"name": "id", "type": "uint256"},
+            {"name": "transactionType", "type": "string"},
+            {"name": "amount", "type": "uint256"},
+            {"name": "empresaId", "type": "uint256"},
+            {"name": "parceiroNegocioId", "type": "uint256"},
+            {"name": "celularId", "type": "uint256"},
+            {"name": "moedaId", "type": "uint256"},
+            {"name": "plataformaId", "type": "uint256"},
+            {"name": "transacaoTipoId", "type": "uint256"},
+            {"name": "status", "type": "string"},
+            {"name": "createdAt", "type": "uint256"},
+            {"name": "tableName", "type": "string"},
+            {"name": "operation", "type": "string"},
+            {"name": "dataControle", "type": "string"},
+            {"name": "uuid", "type": "string"},
+            {"name": "versao", "type": "string"}
+          ],
+          "name": "",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [{"name": "_empresaId", "type": "uint256"}],
+      "name": "getTransactionsByEmpresa",
+      "outputs": [
+        {
+          "components": [
+            {"name": "id", "type": "uint256"},
+            {"name": "transactionType", "type": "string"},
+            {"name": "amount", "type": "uint256"},
+            {"name": "empresaId", "type": "uint256"},
+            {"name": "parceiroNegocioId", "type": "uint256"},
+            {"name": "celularId", "type": "uint256"},
+            {"name": "moedaId", "type": "uint256"},
+            {"name": "plataformaId", "type": "uint256"},
+            {"name": "transacaoTipoId", "type": "uint256"},
+            {"name": "status", "type": "string"},
+            {"name": "createdAt", "type": "uint256"},
+            {"name": "tableName", "type": "string"},
+            {"name": "operation", "type": "string"},
+            {"name": "dataControle", "type": "string"},
+            {"name": "uuid", "type": "string"},
+            {"name": "versao", "type": "string"}
+          ],
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "transactionCount",
+      "outputs": [{"name": "", "type": "uint256"}],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [{"name": "address", "type": "address"}],
+      "name": "isAuthorized",
+      "outputs": [{"name": "", "type": "bool"}],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [{"name": "_user", "type": "address"}],
+      "name": "grantAccess",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [{"name": "_user", "type": "address"}],
+      "name": "revokeAccess",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {"indexed": true, "name": "transactionId", "type": "uint256"},
+        {"indexed": true, "name": "empresaId", "type": "uint256"},
+        {"indexed": false, "name": "transactionType", "type": "string"},
+        {"indexed": false, "name": "amount", "type": "uint256"},
+        {"indexed": false, "name": "timestamp", "type": "uint256"},
+        {"indexed": false, "name": "uuid", "type": "string"}
+      ],
+      "name": "TransactionRecorded",
+      "type": "event"
+    }
+  ]
+}
