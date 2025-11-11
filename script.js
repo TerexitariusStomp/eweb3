@@ -11,41 +11,16 @@ const ABI = [
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-// DOM Elements
-const overviewBtn = document.getElementById('overviewBtn');
-const transactionsBtn = document.getElementById('transactionsBtn');
-const analyticsBtn = document.getElementById('analyticsBtn');
 const sections = document.querySelectorAll('.dashboard-section');
 
 // Charts
 let volumeChart, statusChart;
 
-// Event Listeners
-overviewBtn.addEventListener('click', () => showSection('overview'));
-transactionsBtn.addEventListener('click', () => showSection('transactions'));
-analyticsBtn.addEventListener('click', () => showSection('analytics'));
-
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    showSection('overview');
     loadData();
     setInterval(loadData, 30000); // Refresh every 30 seconds
 });
-
-// Navigation
-function showSection(sectionId) {
-    sections.forEach(section => section.classList.remove('active'));
-    document.getElementById(sectionId).classList.add('active');
-
-    // Update button states
-    document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-
-    // Load section-specific data
-    if (sectionId === 'overview') loadOverview();
-    if (sectionId === 'transactions') loadTransactions();
-    if (sectionId === 'analytics') loadAnalytics();
-}
 
 // Blockchain Helper
 async function blockchainCall(method, params = []) {
@@ -159,9 +134,11 @@ async function loadAnalytics() {
     // Get total count
     const totalTx = await blockchainCall('transactionCount');
     
-    // Query all TransactionRecorded events for historical data
+    // Query recent TransactionRecorded events for historical data
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlock - 1000); // Last 1000 blocks for reasonable data
     const filter = contract.filters.TransactionRecorded();
-    const events = await contract.queryFilter(filter, 0); // From block 0 to get all events
+    const events = await contract.queryFilter(filter, fromBlock, currentBlock);
     
     // Group events by day for volume chart
     const dailyVolumes = {};
@@ -188,12 +165,26 @@ async function loadAnalytics() {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
     
-    // Status breakdown from all available transactions (or recent if too many)
-    const recentTxs = await blockchainCall('getRecentTransactions', [100]);
+    // Status breakdown - fetch recent transactions
+    const recentEvents = events.slice(-20); // Last 20 events
+    const recentTxs = await Promise.all(
+      recentEvents.map(async (event) => {
+        try {
+          const tx = await blockchainCall('getTransaction', [event.args.transactionId]);
+          return tx;
+        } catch (error) {
+          console.warn('Failed to fetch transaction details:', event.args.transactionId, error.message);
+          return null;
+        }
+      })
+    );
+    
+    const validTxs = recentTxs.filter(tx => tx !== null);
     const statusCounts = { confirmed: 0, pending: 0, failed: 0, other: 0 };
-    recentTxs.forEach(tx => {
-      if (statusCounts[tx.status]) {
-        statusCounts[tx.status]++;
+    validTxs.forEach(tx => {
+      const status = tx.status.toLowerCase();
+      if (statusCounts[status]) {
+        statusCounts[status]++;
       } else {
         statusCounts.other++;
       }
@@ -230,7 +221,7 @@ async function loadAnalytics() {
     // Status Chart
     const statusCtx = document.getElementById('statusChart').getContext('2d');
     if (statusChart) statusChart.destroy();
-    const statusLabels = Object.keys(statusCounts).filter(key => key !== 'other').concat(statusCounts.other > 0 ? ['Other'] : []);
+    const statusLabels = Object.keys(statusCounts).filter(key => key !== 'other' && statusCounts[key] > 0).concat(statusCounts.other > 0 ? ['Other'] : []);
     const statusData = statusLabels.map(key => statusCounts[key]);
     statusChart = new Chart(statusCtx, {
       type: 'doughnut',
@@ -252,7 +243,7 @@ async function loadAnalytics() {
     });
 
     // Update total
-    document.getElementById('totalTx').textContent = totalTx.toString();
+    document.getElementById('totalTx').textContent = ethers.utils.formatUnits(totalTx, 0);
 
   } catch (error) {
     showMessage('Error loading analytics from blockchain: ' + error.message, 'error');
